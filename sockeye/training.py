@@ -583,7 +583,8 @@ class EarlyStoppingTrainer:
                  source_vocabs: List[vocab.Vocab],
                  target_vocab: vocab.Vocab,
                  stop_training_on_decoder_failure: bool = False,
-                 custom_metrics_logger: Optional[Callable] = None) -> None:
+                 custom_metrics_logger: Optional[Callable] = None,
+                 checkpoint_callback: Optional[Callable] = None) -> None:
         self.model = model
         self.optimizer_config = optimizer_config
         self.max_params_files_to_keep = max_params_files_to_keep
@@ -596,6 +597,7 @@ class EarlyStoppingTrainer:
         self.state = None  # type: Optional[TrainState]
         self.stop_training_on_decoder_failure = stop_training_on_decoder_failure
         self.custom_metrics_logger = custom_metrics_logger
+        self.checkpoint_callback = checkpoint_callback
 
     def fit(self,
             train_iter: data_io.BaseParallelSampleIter,
@@ -773,6 +775,8 @@ class EarlyStoppingTrainer:
                                                        global_step=decoded_checkpoint)
                     # Start the decoder for the next checkpoint
                     process_manager.start_decoder(self.state.checkpoint)
+                
+
 
                 # (3) determine improvement
                 has_improved = False
@@ -857,6 +861,9 @@ class EarlyStoppingTrainer:
                     break
 
                 tic = time.time()
+
+                if self.checkpoint_callback:
+                    self.checkpoint_callback(self.state.checkpoint)
 
             if process_manager is not None:
                 process_manager.update_process_died_status()
